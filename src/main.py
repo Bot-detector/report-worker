@@ -25,18 +25,6 @@ async def insert_report(session: AsyncSession, data: dict):
     ...
 
 
-def log_speed(
-    counter: int, start_time: float, receive_queue: Queue
-) -> tuple[float, int]:
-    end_time = time.time()
-    delta_time = end_time - start_time
-    speed = counter / delta_time
-    logger.info(
-        f"qsize={receive_queue.qsize()}, processed {counter} in {delta_time:.2f} seconds, {speed:.2f} msg/sec"
-    )
-    return time.time(), 0
-
-
 # Define a function to process data from a queue
 async def process_data(receive_queue: Queue, error_queue: Queue):
     # Initialize counter and start time
