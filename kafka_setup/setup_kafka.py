@@ -35,7 +35,7 @@ def create_topics():
                 replication_factor=1,
             ),
             NewTopic(
-                name="reports",
+                name="report",
                 num_partitions=4,
                 replication_factor=1,
             ),
@@ -121,7 +121,7 @@ def insert_data():
     print("get_messages_from_json")
     get_messages_from_json(extract_to, send_queue=send_queue)
     print("send_messages")
-    send_messages(producer=producer, send_queue=send_queue)
+    send_messages(producer=producer, send_queue=send_queue, topic="report")
 
 
 def main():
