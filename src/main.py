@@ -43,6 +43,9 @@ async def process_data(receive_queue: Queue, error_queue: Queue):
 
         # Get a message from the chosen queue
         message: dict = await receive_queue.get()
+        print(message)
+        await asyncio.sleep(1)
+        continue
 
         try:
             # Acquire an asynchronous database session
@@ -72,9 +75,11 @@ async def process_data(receive_queue: Queue, error_queue: Queue):
 
 
 async def main():
+    TOPIC = "report"
+    GROUP = "report-worker"
     # get kafka engine
     consumer = await kafka.kafka_consumer(
-        topic="report", group="report-worker", bootstrap_servers=[settings.KAFKA_HOST]
+        topic=TOPIC, group=GROUP, bootstrap_servers=[settings.KAFKA_HOST]
     )
     producer = await kafka.kafka_producer(bootstrap_servers=[settings.KAFKA_HOST])
 
@@ -87,7 +92,7 @@ async def main():
         )
     )
     asyncio.create_task(
-        kafka.send_messages(topic="scraper", producer=producer, send_queue=send_queue)
+        kafka.send_messages(topic=TOPIC, producer=producer, send_queue=send_queue)
     )
     asyncio.create_task(
         process_data(receive_queue=receive_queue, error_queue=send_queue)

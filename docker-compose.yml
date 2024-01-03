@@ -75,7 +75,7 @@ services:
 
   worker:
     container_name: worker
-    image: bot-detector/highscore_worker
+    image: bot-detector/report-worker
     build:
       context: .
       dockerfile: Dockerfile

@@ -51,7 +51,7 @@ def create_topics():
 
 def extract_zip(extract_to: str):
     current_dir = "./kafka_data"  # Get the current working directory
-
+    print(os.listdir(current_dir))
     # Find zip file in the current directory
     zip_files = [file for file in os.listdir(current_dir) if file.endswith(".zip")]
 
@@ -107,6 +107,7 @@ def send_messages(producer: KafkaProducer, send_queue: Queue, topic: str = "scra
         if send_queue.qsize() % 100 == 0:
             print(f"{send_queue.qsize()=}")
         message = send_queue.get()
+        print(message)
         producer.send(topic=topic, value=message)
         send_queue.task_done()
 

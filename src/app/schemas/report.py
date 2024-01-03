@@ -4,15 +4,15 @@ from pydantic import BaseModel
 
 
 class Equipment(BaseModel):
-    equip_head_id: Optional[int]
-    equip_amulet_id: Optional[int]
-    equip_torso_id: Optional[int]
-    equip_legs_id: Optional[int]
-    equip_boots_id: Optional[int]
-    equip_cape_id: Optional[int]
-    equip_hands_id: Optional[int]
-    equip_weapon_id: Optional[int]
-    equip_shield_id: Optional[int]
+    equip_head_id: Optional[int] = None
+    equip_amulet_id: Optional[int] = None
+    equip_torso_id: Optional[int] = None
+    equip_legs_id: Optional[int] = None
+    equip_boots_id: Optional[int] = None
+    equip_cape_id: Optional[int] = None
+    equip_hands_id: Optional[int] = None
+    equip_weapon_id: Optional[int] = None
+    equip_shield_id: Optional[int] = None
 
 
 class Report(BaseModel):
