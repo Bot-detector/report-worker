@@ -4,24 +4,39 @@ import logging
 import time
 import traceback
 from asyncio import Event, Queue
-from datetime import datetime
 
 from sqlalchemy import insert, select, update
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncResult, AsyncSession
 from sqlalchemy.sql.expression import Insert, Select, Update
 
 import _kafka
 import core.logging  # for log formatting
+from app.views.player import PlayerInDB
+from app.views.report import ReportInQueue, StgReportCreate, convert_report_q_to_db
 from core.config import settings
 from database.database import get_session
+from database.models.player import Player
+from database.models.report import StgReport
 
 logger = logging.getLogger(__name__)
 
 
+async def select_player(session: AsyncSession, name: str) -> PlayerInDB:
+    sql: Select = select(Player)
+    sql = sql.where(Player.name == name)
+    result: AsyncResult = await session.execute(sql)
+    data = result.scalars().all()
+    return PlayerInDB(**data[0]) if data else None
+
+
 # TODO: pydantic data
-async def insert_report(session: AsyncSession, data: dict):
-    ...
+async def insert_report(session: AsyncSession, data: StgReportCreate):
+    sql: Insert = insert(StgReport)
+    sql = sql.values(data.model_dump(mode="json"))
+    sql = sql.prefix_with("IGNORE")
+    # await session.execute(sql)
+    return
 
 
 # Define a function to process data from a queue
@@ -46,20 +61,39 @@ async def process_data(receive_queue: Queue, error_queue: Queue, shutdown_event:
 
         # Get a message from the chosen queue
         message: dict = await receive_queue.get()
-
+        parsed_msg = ReportInQueue(**message)
         # TEMP
-        print(message)
-        await asyncio.sleep(1)
-        receive_queue.task_done()
-        continue
+        print(parsed_msg)
 
         try:
             # Acquire an asynchronous database session
             session: AsyncSession = await get_session()
             async with session.begin():
-                await insert_report(session=session, data=message)
-                # do the insertion
+                reporter = await select_player(
+                    session=session, name=parsed_msg.reporter
+                )
+                if reporter is None:
+                    logger.error(f"reporter does not exist {parsed_msg.reporter}")
+                    receive_queue.task_done()
+                    continue
+
+                reported = await select_player(
+                    session=session, name=parsed_msg.reported
+                )
+                if reported is None:
+                    logger.error(f"reported does not exist {parsed_msg.reported}")
+                    receive_queue.task_done()
+                    continue
+
+                report = convert_report_q_to_db(
+                    reported_id=reported.id,
+                    reporting_id=reporter.id,
+                    report_in_queue=parsed_msg,
+                )
+
+                await insert_report(session=session, data=report)
                 await session.commit()
+
             # Mark the message as processed in the queue
             receive_queue.task_done()
         # Handle exceptions, log the error, and put the message in the error queue
