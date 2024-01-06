@@ -28,4 +28,9 @@ async def get_session() -> AsyncSession:
     return SessionFactory()
 
 
+def model_to_dict(model):
+    """Converts an SQLAlchemy model instance to a dictionary."""
+    return {c.name: getattr(model, c.name) for c in model.__table__.columns}
+
+
 Base = declarative_base()

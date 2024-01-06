@@ -15,7 +15,7 @@ import core.logging  # for log formatting
 from app.views.player import PlayerInDB
 from app.views.report import ReportInQueue, StgReportCreate, convert_report_q_to_db
 from core.config import settings
-from database.database import get_session
+from database.database import get_session, model_to_dict
 from database.models.player import Player
 from database.models.report import StgReport
 
@@ -27,7 +27,7 @@ async def select_player(session: AsyncSession, name: str) -> PlayerInDB:
     sql = sql.where(Player.name == name)
     result: AsyncResult = await session.execute(sql)
     data = result.scalars().all()
-    return PlayerInDB(**data[0]) if data else None
+    return PlayerInDB(**model_to_dict(data[0])) if data else None
 
 
 # TODO: pydantic data
@@ -35,7 +35,7 @@ async def insert_report(session: AsyncSession, data: StgReportCreate):
     sql: Insert = insert(StgReport)
     sql = sql.values(data.model_dump(mode="json"))
     sql = sql.prefix_with("IGNORE")
-    # await session.execute(sql)
+    await session.execute(sql)
     return
 
 
@@ -62,8 +62,6 @@ async def process_data(receive_queue: Queue, error_queue: Queue, shutdown_event:
         # Get a message from the chosen queue
         message: dict = await receive_queue.get()
         parsed_msg = ReportInQueue(**message)
-        # TEMP
-        print(parsed_msg)
 
         try:
             # Acquire an asynchronous database session
@@ -73,7 +71,7 @@ async def process_data(receive_queue: Queue, error_queue: Queue, shutdown_event:
                     session=session, name=parsed_msg.reporter
                 )
                 if reporter is None:
-                    logger.error(f"reporter does not exist {parsed_msg.reporter}")
+                    logger.error(f"reporter does not exist: '{parsed_msg.reporter}'")
                     receive_queue.task_done()
                     continue
 
@@ -81,7 +79,7 @@ async def process_data(receive_queue: Queue, error_queue: Queue, shutdown_event:
                     session=session, name=parsed_msg.reported
                 )
                 if reported is None:
-                    logger.error(f"reported does not exist {parsed_msg.reported}")
+                    logger.error(f"reported does not exist: '{parsed_msg.reported}'")
                     receive_queue.task_done()
                     continue
 

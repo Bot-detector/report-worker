@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     POOL_TIMEOUT: int
     POOL_RECYCLE: int
-    ENV: str = "DEV"
+    ENV: str = "PRD"
 
 
 settings = Settings()
