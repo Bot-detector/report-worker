@@ -33,7 +33,7 @@ class PlayerUpdate(BaseModel):
 class PlayerInDB(PlayerCreate):
     id: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: datetime | None
 
 
 class Player(PlayerInDB):
