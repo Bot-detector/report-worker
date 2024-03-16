@@ -4,8 +4,6 @@ from sqlalchemy import (
     Column,
     DateTime,
     Integer,
-    String,
-    create_engine,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func

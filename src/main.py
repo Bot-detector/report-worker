@@ -1,17 +1,15 @@
 import asyncio
-import json
 import logging
 import time
 import traceback
 from asyncio import Event, Queue
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import insert, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncResult, AsyncSession
-from sqlalchemy.sql.expression import Insert, Select, Update
+from sqlalchemy.sql.expression import Insert, Select
 
 import _kafka
-import core.logging  # for log formatting
 from app.views.player import PlayerInDB
 from app.views.report import ReportInQueue, StgReportCreate, convert_report_q_to_db
 from core.config import settings
