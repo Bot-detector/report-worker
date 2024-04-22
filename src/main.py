@@ -4,11 +4,6 @@ import time
 import traceback
 from asyncio import Event, Queue
 
-from sqlalchemy import insert, select
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.ext.asyncio import AsyncResult, AsyncSession
-from sqlalchemy.sql.expression import Insert, Select
-
 import _kafka
 from app.views.player import PlayerInDB
 from app.views.report import ReportInQueue, StgReportCreate, convert_report_q_to_db
@@ -16,6 +11,10 @@ from core.config import settings
 from database.database import get_session, model_to_dict
 from database.models.player import Player
 from database.models.report import StgReport
+from sqlalchemy import insert, select
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import AsyncResult, AsyncSession
+from sqlalchemy.sql.expression import Insert, Select
 
 logger = logging.getLogger(__name__)
 
@@ -124,22 +123,19 @@ async def main():
     receive_queue = Queue(maxsize=100)
     send_queue = Queue(maxsize=100)
 
-    asyncio.create_task(
-        _kafka.receive_messages(
-            consumer=consumer,
-            receive_queue=receive_queue,
-            shutdown_event=shutdown_event,
-            batch_size=200,
-        )
+    engine = _kafka.AioKafkaEngine(
+        receive_queue=receive_queue,
+        send_queue=send_queue,
+        producer=producer,
+        consumer=consumer,
     )
-    asyncio.create_task(
-        _kafka.send_messages(
-            topic=TOPIC,
-            producer=producer,
-            send_queue=send_queue,
-            shutdown_event=shutdown_event,
-        )
+    await engine.start(
+        consumer_batch_size=200,
+        producer_shutdown_event=shutdown_event,
+        consumer_shutdown_event=shutdown_event,
+        producer_topic=TOPIC,
     )
+
     asyncio.create_task(
         process_data(
             receive_queue=receive_queue,

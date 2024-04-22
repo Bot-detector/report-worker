@@ -100,3 +100,93 @@ async def send_messages(
         messages_sent += 1
 
     logger.info("shutdown")
+
+
+class AioKafkaEngine:
+    def __init__(
+        self,
+        receive_queue: Queue,
+        send_queue: Queue,
+        producer: AIOKafkaProducer,
+        consumer: AIOKafkaConsumer,
+    ) -> None:
+        self.receive_queue = receive_queue
+        self.send_queue = send_queue
+        self.producer = producer
+        self.consumer = consumer
+
+    def _log_speed(
+        counter: int, start_time: float, _queue: Queue, topic: str, interval: int = 60
+    ) -> tuple[float, int]:
+        # Calculate the time elapsed since the function started
+        delta_time = time.time() - start_time
+
+        # Check if the specified interval has not elapsed yet
+        if delta_time < interval:
+            # Return the original start time and the current counter value
+            return start_time, counter
+
+        # Calculate the processing speed (messages per second)
+        speed = counter / delta_time
+
+        # Log the processing speed and relevant information
+        log_message = (
+            f"{topic=}, qsize={_queue.qsize()}, "
+            f"processed {counter} in {delta_time:.2f} seconds, {speed:.2f} msg/sec"
+        )
+        logger.info(log_message)
+
+        # Return the current time and reset the counter to zero
+        return time.time(), 0
+
+    async def produce_messages(self, shutdown_event: Event, topic: str):
+        start_time = time.time()
+        messages_sent = 0
+
+        while not shutdown_event.is_set():
+            start_time, messages_sent = log_speed(
+                counter=messages_sent,
+                start_time=start_time,
+                _queue=self.send_queue,
+                topic=topic,
+            )
+            if self.send_queue.empty():
+                await asyncio.sleep(1)
+                continue
+
+            message = await self.send_queue.get()
+            await self.producer.send(topic, value=message)
+            self.send_queue.task_done()
+
+            messages_sent += 1
+
+        logger.info("shutdown")
+
+    async def consume_messages(self, shutdown_event: Event, batch_size: int = 200):
+        while not shutdown_event.is_set():
+            batch = await self.consumer.getmany(timeout_ms=1000, max_records=batch_size)
+            for tp, messages in batch.items():
+                await asyncio.gather(
+                    *[self.receive_queue.put(m.value) for m in messages]
+                )
+                await self.consumer.commit()
+                logger.info(f"Partition {tp}: {len(messages)} messages")
+        logger.info("shutdown")
+
+    async def start(
+        self,
+        producer_topic: str,
+        producer_shutdown_event: Event,
+        consumer_shutdown_event: Event,
+        consumer_batch_size: int,
+    ):
+        asyncio.create_task(
+            self.consume_messages(
+                shutdown_event=consumer_shutdown_event, batch_size=consumer_batch_size
+            )
+        )
+        asyncio.create_task(
+            self.produce_messages(
+                shutdown_event=producer_shutdown_event, topic=producer_topic
+            )
+        )
