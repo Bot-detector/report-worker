@@ -28,7 +28,6 @@ async def select_player(session: AsyncSession, name: str) -> PlayerInDB:
 
 
 async def insert_player(session: AsyncSession, player: PlayerCreate) -> PlayerInDB:
-    player.name = player.name.lower().replace("_", " ").replace("-", " ").strip()
     sql: Insert = insert(Player)
     sql = sql.values(player.model_dump())
     await session.execute(sql)
@@ -36,6 +35,7 @@ async def insert_player(session: AsyncSession, player: PlayerCreate) -> PlayerIn
 
 
 async def get_or_create_player(session: AsyncSession, player_name: str) -> PlayerInDB:
+    player_name = player_name.lower().replace("_", " ").replace("-", " ").strip()
     player = await select_player(session=session, name=player_name)
     # create reporter
     if player is None:
