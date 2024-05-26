@@ -1,3 +1,5 @@
+import time
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -38,6 +40,7 @@ class StgReportCreate(BaseModel):
     x_coord: int
     y_coord: int
     z_coord: int
+    timestamp: datetime
     manual_detect: Optional[bool] = None
     on_members_world: Optional[int] = None
     on_pvp_world: Optional[bool] = None
@@ -79,8 +82,7 @@ class StgReportUpdate(BaseModel):
 
 class StgReportInDB(StgReportCreate):
     ID: int
-    created_at: str
-    timestamp: str
+    created_at: datetime
 
 
 class StgReport(StgReportInDB):
@@ -90,9 +92,12 @@ class StgReport(StgReportInDB):
 def convert_report_q_to_db(
     reported_id: int, reporting_id: int, report_in_queue: ReportInQueue
 ) -> StgReportCreate:
+    gmt = time.gmtime(report_in_queue.ts)
+    human_time = time.strftime("%Y-%m-%d %H:%M:%S", gmt)
     return StgReportCreate(
         reportedID=reported_id,
         reportingID=reporting_id,
+        timestamp=human_time,
         region_id=report_in_queue.region_id,
         x_coord=report_in_queue.x_coord,
         y_coord=report_in_queue.y_coord,
