@@ -15,9 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 
-async def create_insert_batch(report_queue: Queue):
-    last_time = time.time()
-    batch = []
+async def check_duplicate_report(report_queue: Queue, valid_report_queue: Queue):
     while True:
         # Check if both queues are empty
         if report_queue.empty():
@@ -38,20 +36,12 @@ async def create_insert_batch(report_queue: Queue):
                     reporting_id=msg.reportingID,
                     region_id=msg.region_id,
                 )
-                if report:
-                    continue
-                # append to batch
-                batch.append(msg)
 
-                now = time.time()
-                if now - last_time > 10:
-                    logger.debug(f"batch inserting: {len(batch)}")
-                    last_time = time.time()
-                    await report_controller.insert(reports=batch)
-                    logger.debug(
-                        f"inserted: {len(batch)}, duration (sec): {int(time.time()-last_time)}"
-                    )
-                    batch = []
+            # skip duplicate reports
+            if report:
+                continue
+
+            await valid_report_queue.put(msg)
         except OperationalError as e:
             await report_queue.put(msg)
             logger.error({"error": e})
@@ -63,6 +53,50 @@ async def create_insert_batch(report_queue: Queue):
             logger.debug(f"Traceback: \n{traceback.format_exc()}")
             await asyncio.sleep(5)
             continue
+
+
+async def queue_to_batch(queue: Queue, max_len: int = None) -> list:
+    output = []
+    max_len = max_len if max_len else queue.qsize()
+    for _ in range(max_len):
+        msg = await queue.get()
+        queue.task_done()
+        output.append(msg)
+    return output
+
+
+async def insert_batch(valid_report_queue: Queue):
+    last_time = time.time()
+    while True:
+        if valid_report_queue.empty():
+            await asyncio.sleep(1)
+            continue
+
+        if time.time() - last_time < 10:
+            await asyncio.sleep(1)
+            continue
+
+        try:
+            # Acquire an asynchronous database session
+            session: AsyncSession = await get_session()
+            async with session.begin():
+                report_controller = ReportController(session=session)
+
+                batch = await queue_to_batch(queue=valid_report_queue)
+                logger.debug(f"batch inserting: {len(batch)}")
+                await report_controller.insert(reports=batch)
+                last_time = time.time()
+
+        except OperationalError as e:
+            await asyncio.gather(*[valid_report_queue.put(msg) for msg in batch])
+            logger.error({"error": e})
+            await asyncio.sleep(5)
+
+        except Exception as e:
+            await asyncio.gather(*[valid_report_queue.put(msg) for msg in batch])
+            logger.error({"error": e})
+            logger.debug(f"Traceback: \n{traceback.format_exc()}")
+            await asyncio.sleep(5)
 
 
 async def process_data(report_queue: Queue):
@@ -122,11 +156,19 @@ async def process_data(report_queue: Queue):
 
 async def main():
     report_queue = Queue(maxsize=500)
+    valid_report_queue = Queue()
     await producer.start_engine(topic="report")
     await consumer.start_engine(topics=["report"])
 
-    asyncio.create_task(process_data(report_queue))
-    asyncio.create_task(create_insert_batch(report_queue))
+    for _ in range(5):
+        asyncio.create_task(process_data(report_queue=report_queue))
+        asyncio.create_task(
+            check_duplicate_report(
+                report_queue=report_queue, valid_report_queue=valid_report_queue
+            )
+        )
+    asyncio.create_task(insert_batch(valid_report_queue=valid_report_queue))
+
     while True:
         await asyncio.sleep(60)
 

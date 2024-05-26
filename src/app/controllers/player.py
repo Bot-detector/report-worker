@@ -22,7 +22,7 @@ class PlayerController(DatabaseHandler):
 
     async def insert(self, player: PlayerCreate) -> PlayerInDB:
         player.name = self.sanitize_name(player.name)
-        sql = sqla.insert(DBPlayer).values(player.model_dump())
+        sql = sqla.insert(DBPlayer).values(player.model_dump()).prefix_with("IGNORE")
         await self.session.execute(sql)
         return await self.get(player_name=player.name)
 
