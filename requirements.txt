@@ -35,3 +35,4 @@ SQLAlchemy==2.0.23
 tomli==2.0.1
 typing_extensions==4.8.0
 virtualenv==20.24.6
+AiokafkaEngine==0.0.4
