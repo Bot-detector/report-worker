@@ -66,13 +66,15 @@ async def queue_to_batch(queue: Queue, max_len: int = None) -> list:
 
 
 async def insert_batch(valid_report_queue: Queue):
+    INSERT_INTERVAL_SEC = 20
     last_time = time.time()
+    batch = []
     while True:
         if valid_report_queue.empty():
             await asyncio.sleep(1)
             continue
 
-        if time.time() - last_time < 10:
+        if time.time() - last_time < INSERT_INTERVAL_SEC or batch > 10_000:
             await asyncio.sleep(1)
             continue
 
