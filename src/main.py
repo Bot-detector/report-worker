@@ -74,7 +74,7 @@ async def insert_batch(valid_report_queue: Queue):
             await asyncio.sleep(1)
             continue
 
-        if time.time() - last_time < INSERT_INTERVAL_SEC or batch > 10_000:
+        if time.time() - last_time < INSERT_INTERVAL_SEC or len(batch) > 10_000:
             await asyncio.sleep(1)
             continue
 
