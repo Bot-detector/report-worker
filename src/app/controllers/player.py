@@ -14,7 +14,6 @@ class PlayerController(DatabaseHandler):
     def sanitize_name(self, player_name: str) -> str:
         return player_name.lower().replace("_", " ").replace("-", " ").strip()
 
-    @alru_cache(maxsize=2048)
     async def get(self, player_name: str) -> PlayerInDB:
         player_name = self.sanitize_name(player_name)
         sql = sqla.select(DBPlayer).where(DBPlayer.name == player_name)
@@ -28,6 +27,7 @@ class PlayerController(DatabaseHandler):
         await self.session.execute(sql)
         return await self.get(player_name=player.name)
 
+    @alru_cache(maxsize=2048)
     async def get_or_insert(self, player_name: str) -> PlayerInDB:
         player_name = self.sanitize_name(player_name)
         player = await self.get(player_name=player_name)
