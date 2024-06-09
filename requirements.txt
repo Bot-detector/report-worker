@@ -39,3 +39,4 @@ SQLAlchemy==2.0.30
 tomli==2.0.1
 typing_extensions==4.12.0
 virtualenv==20.26.2
+async_lru==2.0.4

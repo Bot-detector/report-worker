@@ -52,7 +52,7 @@ services:
         condition: service_healthy
 
   mysql:
-    container_name: database
+    container_name: rp-worker-db
     build:
       context: ./mysql
     image: bot-detector/mysql:latest

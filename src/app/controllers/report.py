@@ -4,6 +4,7 @@ from app.views.report import (
     StgReportCreate,
     StgReportInDB,
 )
+from async_lru import alru_cache
 from database.database import model_to_dict
 from database.models.report import Report as DBReport
 from database.models.report import StgReport as DBSTGReport
@@ -14,6 +15,7 @@ class ReportController(DatabaseHandler):
     def __init__(self, session: AsyncSession):
         self.session = session
 
+    @alru_cache(maxsize=2048)
     async def get(
         self, reported_id: int, reporting_id: int, region_id: int
     ) -> StgReportInDB:
