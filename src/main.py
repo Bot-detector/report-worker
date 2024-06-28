@@ -4,9 +4,6 @@ import time
 import traceback
 from asyncio import Queue
 
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from _kafka import consumer, producer
 from app.controllers.player import PlayerController
 from app.controllers.report import ReportController
@@ -17,6 +14,8 @@ from app.views.report import (
     convert_report_q_to_db,
 )
 from database.database import get_session
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +169,7 @@ async def process_data(report_queue: Queue):
             elif msg_version in [None, "v2.0.0"]:
                 msg = ReportInQV2(**raw_msg)
                 report = await process_msg_v2(msg=msg)
-        except (ReporterDoesNotExist, ReportedDoesNotExist) as e:
+        except (ReporterDoesNotExist, ReportedDoesNotExist):
             continue
         except OperationalError as e:
             await error_queue.put(raw_msg)
