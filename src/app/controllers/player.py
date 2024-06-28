@@ -1,10 +1,11 @@
 import sqlalchemy as sqla
+from async_lru import alru_cache
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.controllers.db_handler import DatabaseHandler
 from app.views.player import PlayerCreate, PlayerInDB
-from async_lru import alru_cache
 from database.database import model_to_dict
 from database.models.player import Player as DBPlayer
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class PlayerController(DatabaseHandler):

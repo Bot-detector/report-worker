@@ -5,6 +5,10 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+class Metadata(BaseModel):
+    version: str
+
+
 class Equipment(BaseModel):
     equip_head_id: Optional[int] = None
     equip_amulet_id: Optional[int] = None
@@ -15,6 +19,30 @@ class Equipment(BaseModel):
     equip_hands_id: Optional[int] = None
     equip_weapon_id: Optional[int] = None
     equip_shield_id: Optional[int] = None
+
+
+class BaseReport(BaseModel):
+    region_id: int
+    x_coord: int
+    y_coord: int
+    z_coord: int
+    ts: int
+    manual_detect: int
+    on_members_world: int
+    on_pvp_world: int
+    world_number: int
+    equipment: Equipment
+    equip_ge_value: int
+
+
+class ReportInQV1(BaseReport):
+    reporter: str
+    reported: str
+
+
+class ReportInQV2(BaseReport):
+    reporter_id: int
+    reported_id: int
 
 
 class ReportInQueue(BaseModel):

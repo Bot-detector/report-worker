@@ -1,10 +1,4 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Integer,
-)
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 

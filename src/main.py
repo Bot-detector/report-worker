@@ -4,13 +4,14 @@ import time
 import traceback
 from asyncio import Queue
 
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from _kafka import consumer, producer
 from app.controllers.player import PlayerController
 from app.controllers.report import ReportController
 from app.views.report import ReportInQueue, StgReportCreate, convert_report_q_to_db
 from database.database import get_session
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 

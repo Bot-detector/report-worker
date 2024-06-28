@@ -1,14 +1,12 @@
 import sqlalchemy as sqla
-from app.controllers.db_handler import DatabaseHandler
-from app.views.report import (
-    StgReportCreate,
-    StgReportInDB,
-)
 from async_lru import alru_cache
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.controllers.db_handler import DatabaseHandler
+from app.views.report import StgReportCreate, StgReportInDB
 from database.database import model_to_dict
 from database.models.report import Report as DBReport
 from database.models.report import StgReport as DBSTGReport
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ReportController(DatabaseHandler):
