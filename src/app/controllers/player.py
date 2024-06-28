@@ -1,7 +1,7 @@
 import sqlalchemy as sqla
-from async_lru import alru_cache
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from _cache import SimpleALRUCache
 from app.controllers.db_handler import DatabaseHandler
 from app.views.player import PlayerCreate, PlayerInDB
 from database.database import model_to_dict
@@ -11,6 +11,7 @@ from database.models.player import Player as DBPlayer
 class PlayerController(DatabaseHandler):
     def __init__(self, session: AsyncSession):
         self.session = session
+        self.cache = SimpleALRUCache(max_size=10000)
 
     def sanitize_name(self, player_name: str) -> str:
         return player_name.lower().replace("_", " ").replace("-", " ").strip()
@@ -28,10 +29,17 @@ class PlayerController(DatabaseHandler):
         await self.session.execute(sql)
         return await self.get(player_name=player.name)
 
-    @alru_cache(maxsize=2048)
     async def get_or_insert(self, player_name: str) -> PlayerInDB:
+        player = self.cache.get(key=player_name)
+
+        if player is not None:
+            return player
+
         player_name = self.sanitize_name(player_name)
         player = await self.get(player_name=player_name)
+
         if player is None:
             player = await self.insert(PlayerCreate(name=player_name))
+
+        await self.cache.put(key=player_name, value=player)
         return player

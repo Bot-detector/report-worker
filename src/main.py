@@ -10,10 +10,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from _kafka import consumer, producer
 from app.controllers.player import PlayerController
 from app.controllers.report import ReportController
-from app.views.report import ReportInQueue, StgReportCreate, convert_report_q_to_db
+from app.views.report import (
+    ReportInQV1,
+    ReportInQV2,
+    StgReportCreate,
+    convert_report_q_to_db,
+)
 from database.database import get_session
 
 logger = logging.getLogger(__name__)
+
+
+class PlayerDoesNotExist(Exception):
+    ...
+
+
+class ReporterDoesNotExist(PlayerDoesNotExist):
+    ...
+
+
+class ReportedDoesNotExist(PlayerDoesNotExist):
+    ...
 
 
 async def check_duplicate_report(report_queue: Queue, valid_report_queue: Queue):
@@ -102,6 +119,35 @@ async def insert_batch(valid_report_queue: Queue):
             await asyncio.sleep(5)
 
 
+async def process_msg_v1(msg: ReportInQV1) -> StgReportCreate:
+    # Acquire an asynchronous database session
+    session: AsyncSession = await get_session()
+    async with session.begin():
+        player_controller = PlayerController(session=session)
+        reporter = await player_controller.get_or_insert(player_name=msg.reporter)
+        reported = await player_controller.get_or_insert(player_name=msg.reported)
+
+    # double check reporter & reported
+    if reporter is None:
+        logger.error(f"reporter does not exist: '{msg.reporter}'")
+        raise ReporterDoesNotExist()
+
+    if reported is None:
+        logger.error(f"reported does not exist: '{msg.reported}'")
+        raise ReportedDoesNotExist
+
+    report = convert_report_q_to_db(
+        reported_id=reported.id,
+        reporting_id=reporter.id,
+        report_in_queue=msg,
+    )
+    return report
+
+
+async def process_msg_v2(msg: ReportInQV2) -> StgReportCreate:
+    ...
+
+
 async def process_data(report_queue: Queue):
     receive_queue = consumer.get_queue()
     error_queue = producer.get_queue()
@@ -113,48 +159,25 @@ async def process_data(report_queue: Queue):
 
         raw_msg: dict = await receive_queue.get()
         receive_queue.task_done()
-        msg = ReportInQueue(**raw_msg)
+
+        msg_metadata: dict = raw_msg.get("metadata")
+        msg_version = msg_metadata.get("version") if msg_metadata else None
 
         try:
-            # Acquire an asynchronous database session
-            session: AsyncSession = await get_session()
-            async with session.begin():
-                player_controller = PlayerController(session=session)
-                reporter = await player_controller.get_or_insert(
-                    player_name=msg.reporter
-                )
-                reported = await player_controller.get_or_insert(
-                    player_name=msg.reported
-                )
-
-            # double check reporter & reported
-            if reporter is None:
-                logger.error(f"reporter does not exist: '{msg.reporter}'")
-                continue
-
-            if reported is None:
-                logger.error(f"reported does not exist: '{msg.reported}'")
-                continue
-
-            report = convert_report_q_to_db(
-                reported_id=reported.id,
-                reporting_id=reporter.id,
-                report_in_queue=msg,
-            )
-            await report_queue.put(report)
+            if msg_version in [None, "v1.0.0"]:
+                msg = ReportInQV1(**raw_msg)
+                report = await process_msg_v1(msg=msg)
+            elif msg_version in [None, "v2.0.0"]:
+                msg = ReportInQV2(**raw_msg)
+                report = await process_msg_v2(msg=msg)
+        except (ReporterDoesNotExist, ReportedDoesNotExist) as e:
+            continue
         except OperationalError as e:
             await error_queue.put(raw_msg)
             logger.error({"error": e})
-            logger.info(f"error_qsize={error_queue.qsize()}, {raw_msg=}")
             await asyncio.sleep(5)
-            continue
-        except Exception as e:
-            await error_queue.put(raw_msg)
-            logger.error({"error": e})
-            logger.debug(f"Traceback: \n{traceback.format_exc()}")
-            logger.info(f"error_qsize={error_queue.qsize()}, {raw_msg=}")
-            await asyncio.sleep(5)
-            continue
+
+        await report_queue.put(report)
 
 
 async def main():
