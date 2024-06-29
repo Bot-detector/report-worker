@@ -148,9 +148,7 @@ async def process_msg_v2(msg: ReportInQV2) -> StgReportCreate:
     ...
 
 
-async def process_data(report_queue: Queue):
-    player_controller = PlayerController()
-
+async def process_data(report_queue: Queue, player_controller: PlayerController):
     receive_queue = consumer.get_queue()
     error_queue = producer.get_queue()
     while True:
@@ -190,11 +188,19 @@ async def main():
     await producer.start_engine(topic="report")
     await consumer.start_engine(topics=["report"])
 
+    player_controller = PlayerController()
+
     for _ in range(5):
-        asyncio.create_task(process_data(report_queue=report_queue))
+        asyncio.create_task(
+            process_data(
+                report_queue=report_queue,
+                player_controller=player_controller,
+            )
+        )
         asyncio.create_task(
             check_duplicate_report(
-                report_queue=report_queue, valid_report_queue=valid_report_queue
+                report_queue=report_queue,
+                valid_report_queue=valid_report_queue,
             )
         )
     asyncio.create_task(insert_batch(valid_report_queue=valid_report_queue))
