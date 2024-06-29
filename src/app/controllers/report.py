@@ -1,12 +1,11 @@
 import sqlalchemy as sqla
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from _cache import SimpleALRUCache
 from app.controllers.db_handler import DatabaseHandler
 from app.views.report import StgReportCreate, StgReportInDB
 from database.database import model_to_dict
 from database.models.report import Report as DBReport
 from database.models.report import StgReport as DBSTGReport
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ReportController(DatabaseHandler):
@@ -17,9 +16,9 @@ class ReportController(DatabaseHandler):
     async def get(
         self, reported_id: int, reporting_id: int, region_id: int
     ) -> StgReportInDB:
-        report = self.cache.get(key=(reported_id, reporting_id, reporting_id))
+        report = await self.cache.get(key=(reported_id, reporting_id, reporting_id))
 
-        if report is not None:
+        if isinstance(report, StgReportInDB):
             return report
 
         sql = sqla.select(DBReport).where(
@@ -32,7 +31,9 @@ class ReportController(DatabaseHandler):
         result = await self.session.execute(sql)
         data = result.scalars().all()
         report = StgReportInDB(**model_to_dict(data[0])) if data else None
-        self.cache.put(key=(reported_id, reporting_id, reporting_id), value=report)
+
+        if isinstance(report, StgReportInDB):
+            self.cache.put(key=(reported_id, reporting_id, reporting_id), value=report)
         return report
 
     async def insert(self, reports: list[StgReportCreate]) -> None:

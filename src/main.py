@@ -118,11 +118,13 @@ async def insert_batch(valid_report_queue: Queue):
             await asyncio.sleep(5)
 
 
-async def process_msg_v1(msg: ReportInQV1) -> StgReportCreate:
+async def process_msg_v1(
+    msg: ReportInQV1, player_controller: PlayerController
+) -> StgReportCreate:
     # Acquire an asynchronous database session
     session: AsyncSession = await get_session()
     async with session.begin():
-        player_controller = PlayerController(session=session)
+        await player_controller.update_session(session=session)
         reporter = await player_controller.get_or_insert(player_name=msg.reporter)
         reported = await player_controller.get_or_insert(player_name=msg.reported)
 
@@ -134,7 +136,6 @@ async def process_msg_v1(msg: ReportInQV1) -> StgReportCreate:
     if reported is None:
         logger.error(f"reported does not exist: '{msg.reported}'")
         raise ReportedDoesNotExist
-
     report = convert_report_q_to_db(
         reported_id=reported.id,
         reporting_id=reporter.id,
@@ -148,6 +149,8 @@ async def process_msg_v2(msg: ReportInQV2) -> StgReportCreate:
 
 
 async def process_data(report_queue: Queue):
+    player_controller = PlayerController()
+
     receive_queue = consumer.get_queue()
     error_queue = producer.get_queue()
     while True:
@@ -165,7 +168,9 @@ async def process_data(report_queue: Queue):
         try:
             if msg_version in [None, "v1.0.0"]:
                 msg = ReportInQV1(**raw_msg)
-                report = await process_msg_v1(msg=msg)
+                report = await process_msg_v1(
+                    msg=msg, player_controller=player_controller
+                )
             elif msg_version in [None, "v2.0.0"]:
                 msg = ReportInQV2(**raw_msg)
                 report = await process_msg_v2(msg=msg)

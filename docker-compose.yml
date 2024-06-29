@@ -42,7 +42,8 @@ services:
     image: bot-detector/kafka_setup
     build:
       context: ./kafka_setup
-    command: ["python", "setup_kafka.py"]
+    # command: bash -c "sleep infinity"
+    # command: ["python", "main.py"]
     environment:
       - KAFKA_BROKER=kafka:9092
     networks:

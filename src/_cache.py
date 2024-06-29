@@ -1,5 +1,8 @@
 import asyncio
+import logging
 from collections import OrderedDict
+
+logger = logging.getLogger(__name__)
 
 
 class SimpleALRUCache:
@@ -7,13 +10,17 @@ class SimpleALRUCache:
         self.cache = OrderedDict()
         self.max_size = max_size
         self.lock = asyncio.Lock()
+        self.hits: int = 0
+        self.misses: int = 0
 
     async def get(self, key):
         async with self.lock:
             if key in self.cache:
                 # Move the accessed key to the end to mark it as recently used
                 self.cache.move_to_end(key)
+                self.hits += 1
                 return self.cache[key]
+            self.misses += 1
             return None
 
     async def put(self, key, value):
