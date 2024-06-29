@@ -9,6 +9,7 @@ from kafka import KafkaProducer
 
 def send_data(producer: KafkaProducer):
     example = {
+        "metadata": {"version": "v1.0.0"},
         "reporter": "player1",
         "reported": "player2",
         "region_id": 14652,
@@ -40,6 +41,7 @@ def send_data(producer: KafkaProducer):
     faker = Faker()
     for i in range(len_messages):
         msg = {
+            "metadata": {"version": "v1.0.0"},
             "reporter": random.choice(players),
             "reported": random.choice(players),
             "region_id": random.randint(10_000, 10_500),
@@ -59,6 +61,11 @@ def send_data(producer: KafkaProducer):
             },
             "equip_ge_value": 0,
         }
+
+        with_metadata = random.choice([0, 1])
+        if with_metadata == 0:
+            msg.pop("metadata")
+
         producer.send(topic="report", value=msg)
         print(i, msg)
     print("Data insertion completed.")

@@ -36,9 +36,8 @@ class PlayerController(DatabaseHandler):
         player = await self.cache.get(key=player_name)
 
         if isinstance(player, PlayerInDB):
-            logger.info(f"hits: {self.cache.hits}, misses: {self.cache.misses}")
             if self.cache.hits % 100 == 0 and self.cache.hits > 0:
-                pass
+                logger.info(f"hits: {self.cache.hits}, misses: {self.cache.misses}")
             return player
 
         player = await self.get(player_name=player_name)
