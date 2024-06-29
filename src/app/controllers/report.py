@@ -33,7 +33,10 @@ class ReportController(DatabaseHandler):
         report = StgReportInDB(**model_to_dict(data[0])) if data else None
 
         if isinstance(report, StgReportInDB):
-            self.cache.put(key=(reported_id, reporting_id, reporting_id), value=report)
+            await self.cache.put(
+                key=(reported_id, reporting_id, reporting_id),
+                value=report,
+            )
         return report
 
     async def insert(self, reports: list[StgReportCreate]) -> None:
