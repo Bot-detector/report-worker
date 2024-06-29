@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 class SimpleALRUCache:
-    def __init__(self, max_size=128):
+    def __init__(self, max_size=10_000):
         self.cache = OrderedDict()
         self.max_size = max_size
         self.lock = asyncio.Lock()

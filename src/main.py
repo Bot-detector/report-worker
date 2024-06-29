@@ -4,6 +4,7 @@ import time
 import traceback
 from asyncio import Queue
 
+from _cache import SimpleALRUCache
 from _kafka import consumer, producer
 from app.controllers.player import PlayerController
 from app.controllers.report import ReportController
@@ -148,9 +149,12 @@ async def process_msg_v2(msg: ReportInQV2) -> StgReportCreate:
     ...
 
 
-async def process_data(report_queue: Queue, player_controller: PlayerController):
+async def process_data(report_queue: Queue, player_cache: SimpleALRUCache):
     receive_queue = consumer.get_queue()
     error_queue = producer.get_queue()
+
+    player_controller = PlayerController(cache=player_cache)
+
     while True:
         # Check if both queues are empty
         if receive_queue.empty():
@@ -188,13 +192,13 @@ async def main():
     await producer.start_engine(topic="report")
     await consumer.start_engine(topics=["report"])
 
-    player_controller = PlayerController()
+    player_cache = SimpleALRUCache()
 
     for _ in range(5):
         asyncio.create_task(
             process_data(
                 report_queue=report_queue,
-                player_controller=player_controller,
+                player_cache=player_cache,
             )
         )
         asyncio.create_task(

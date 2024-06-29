@@ -12,9 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 class PlayerController(DatabaseHandler):
-    def __init__(self, session: AsyncSession = None):
+    def __init__(
+        self,
+        session: AsyncSession = None,
+        cache: SimpleALRUCache = SimpleALRUCache(),
+    ):
         self.session = session
-        self.cache = SimpleALRUCache(max_size=10_000)
+        self.cache = cache
 
     def sanitize_name(self, player_name: str) -> str:
         return player_name.lower().replace("_", " ").replace("-", " ").strip()
