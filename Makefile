@@ -15,13 +15,6 @@ export PRINT_HELP_PYSCRIPT
 help:
 	@python3 -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
-pre-commit-setup: ## Install pre-commit
-	python3 -m pip install pre-commit
-	pre-commit --version
-
-pre-commit: ## Run pre-commit
-	pre-commit run --all-files
-
 create-venv:
 	python3 -m venv .venv
 	source .venv/bin/activate
@@ -42,9 +35,6 @@ docker-test:
 	docker compose down
 	docker compose up --build -d
 	pytest
-
-api-setup:
-	python3 -m pip install "fastapi[all]"
 
 env-setup:
 	touch .env

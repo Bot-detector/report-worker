@@ -1,4 +1,5 @@
 from AioKafkaEngine import ConsumerEngine, ProducerEngine
+
 from core.config import settings
 
 consumer = ConsumerEngine(
