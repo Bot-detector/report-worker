@@ -37,13 +37,11 @@ def send_data(producer: KafkaProducer):
 
     # Generate fixed players with the same names and scores
     len_messages = 100_000
-    players = [f"player{i}" for i in range(500)]
+    players = [f"player{i}" for i in range(300)]
     faker = Faker()
     for i in range(len_messages):
+        version = random.choice(["v1.0.0", "v2.0.0"])
         msg = {
-            "metadata": {"version": "v1.0.0"},
-            "reporter": random.choice(players),
-            "reported": random.choice(players),
             "region_id": random.randint(10_000, 10_500),
             "x_coord": random.randint(0, 5000),
             "y_coord": random.randint(0, 5000),
@@ -61,13 +59,26 @@ def send_data(producer: KafkaProducer):
             },
             "equip_ge_value": 0,
         }
-
-        with_metadata = random.choice([0, 1])
-        if with_metadata == 0:
-            msg.pop("metadata")
-
+        if version == "v1.0.0":
+            v1 = {
+                "metadata": {"version": "v1.0.0"},
+                "reporter": random.choice(players),
+                "reported": random.choice(players),
+            }
+            msg.update(v1)
+            with_metadata = random.choice([0, 1])
+            if with_metadata == 0:
+                msg.pop("metadata")
+        elif version == "v2.0.0":
+            v2 = {
+                "metadata": {"version": "v2.0.0"},
+                "reporter_id": random.choice(players).replace("player", ""),
+                "reported_id": random.choice(players).replace("player", ""),
+            }
+            msg.update(v2)
+        assert "reporter" in msg or "reported_id" in msg
         producer.send(topic="report", value=msg)
-        print(i, msg)
+        print(i, msg["metadata"], msg["reporting_id"], msg["reported_id"])
     print("Data insertion completed.")
 
 
