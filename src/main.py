@@ -146,7 +146,32 @@ async def process_msg_v1(
 
 
 async def process_msg_v2(msg: ReportInQV2) -> StgReportCreate:
-    ...
+    gmt = time.gmtime(msg.ts)
+    human_time = time.strftime("%Y-%m-%d %H:%M:%S", gmt)
+    report = StgReportCreate(
+        reportedID=msg.reported_id,
+        reportingID=msg.reporter_id,
+        timestamp=human_time,
+        region_id=msg.region_id,
+        x_coord=msg.x_coord,
+        y_coord=msg.y_coord,
+        z_coord=msg.z_coord,
+        manual_detect=bool(msg.manual_detect),
+        on_members_world=msg.on_members_world,
+        on_pvp_world=bool(msg.on_pvp_world),
+        world_number=msg.world_number,
+        equip_head_id=msg.equipment.equip_head_id,
+        equip_amulet_id=msg.equipment.equip_amulet_id,
+        equip_torso_id=msg.equipment.equip_torso_id,
+        equip_legs_id=msg.equipment.equip_legs_id,
+        equip_boots_id=msg.equipment.equip_boots_id,
+        equip_cape_id=msg.equipment.equip_cape_id,
+        equip_hands_id=msg.equipment.equip_hands_id,
+        equip_weapon_id=msg.equipment.equip_weapon_id,
+        equip_shield_id=msg.equipment.equip_shield_id,
+        equip_ge_value=msg.equip_ge_value,
+    )
+    return report
 
 
 async def process_data(report_queue: Queue, player_cache: SimpleALRUCache):
@@ -173,7 +198,7 @@ async def process_data(report_queue: Queue, player_cache: SimpleALRUCache):
                 report = await process_msg_v1(
                     msg=msg, player_controller=player_controller
                 )
-            elif msg_version in [None, "v2.0.0"]:
+            elif msg_version in ["v2.0.0"]:
                 msg = ReportInQV2(**raw_msg)
                 report = await process_msg_v2(msg=msg)
         except (ReporterDoesNotExist, ReportedDoesNotExist):
