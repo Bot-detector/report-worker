@@ -33,7 +33,11 @@ class ReportedDoesNotExist(PlayerDoesNotExist):
     ...
 
 
-async def check_duplicate_report(report_queue: Queue, valid_report_queue: Queue):
+async def check_duplicate_report(
+    report_queue: Queue,
+    valid_report_queue: Queue,
+    skip: bool = False,
+):
     while True:
         # Check if both queues are empty
         if report_queue.empty():
@@ -43,6 +47,10 @@ async def check_duplicate_report(report_queue: Queue, valid_report_queue: Queue)
         # read message from queue
         msg: StgReportCreate = await report_queue.get()
         report_queue.task_done()
+
+        if skip:
+            await valid_report_queue.put(msg)
+            continue
 
         try:
             # Acquire an asynchronous database session
@@ -230,6 +238,7 @@ async def main():
             check_duplicate_report(
                 report_queue=report_queue,
                 valid_report_queue=valid_report_queue,
+                skip=True,
             )
         )
     asyncio.create_task(insert_batch(valid_report_queue=valid_report_queue))
