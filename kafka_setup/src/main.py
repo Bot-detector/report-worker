@@ -69,6 +69,7 @@ def send_data(producer: KafkaProducer):
             with_metadata = random.choice([0, 1])
             if with_metadata == 0:
                 msg.pop("metadata")
+            print(i, msg.get("metadata"), msg["reporter"], msg["reported"])
         elif version == "v2.0.0":
             v2 = {
                 "metadata": {"version": "v2.0.0"},
@@ -76,9 +77,10 @@ def send_data(producer: KafkaProducer):
                 "reported_id": random.choice(players).replace("player", ""),
             }
             msg.update(v2)
+            print(i, msg.get("metadata"), msg["reporter_id"], msg["reported_id"])
         assert "reporter" in msg or "reported_id" in msg
         producer.send(topic="report", value=msg)
-        print(i, msg["metadata"], msg["reporting_id"], msg["reported_id"])
+
     print("Data insertion completed.")
 
 

@@ -92,7 +92,7 @@ async def queue_to_batch(queue: Queue, max_len: int = None) -> list:
 
 
 async def insert_batch(valid_report_queue: Queue):
-    INSERT_INTERVAL_SEC = 20
+    INSERT_INTERVAL_SEC = 60
     last_time = time.time()
     batch = []
     while True:
@@ -221,7 +221,6 @@ async def process_data(report_queue: Queue, player_cache: SimpleALRUCache):
 
 async def main():
     report_queue = Queue(maxsize=500)
-    valid_report_queue = Queue()
     await producer.start_engine(topic="report")
     await consumer.start_engine(topics=["report"])
 
@@ -234,14 +233,7 @@ async def main():
                 player_cache=player_cache,
             )
         )
-        asyncio.create_task(
-            check_duplicate_report(
-                report_queue=report_queue,
-                valid_report_queue=valid_report_queue,
-                skip=True,
-            )
-        )
-    asyncio.create_task(insert_batch(valid_report_queue=valid_report_queue))
+    asyncio.create_task(insert_batch(valid_report_queue=report_queue))
 
     while True:
         await asyncio.sleep(60)
