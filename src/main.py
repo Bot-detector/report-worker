@@ -220,7 +220,7 @@ async def process_data(report_queue: Queue, player_cache: SimpleALRUCache):
 
 
 async def main():
-    report_queue = Queue(maxsize=500)
+    report_queue = Queue(maxsize=10_000)
     await producer.start_engine(topic="report")
     await consumer.start_engine(topics=["report"])
 
