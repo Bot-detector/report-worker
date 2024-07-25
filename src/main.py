@@ -93,6 +93,7 @@ async def queue_to_batch(queue: Queue, max_len: int = None) -> list:
 
 async def insert_batch(valid_report_queue: Queue):
     INSERT_INTERVAL_SEC = 60
+    BATCH_SIZE = 100
     last_time = time.time()
     batch = []
     while True:
@@ -100,7 +101,7 @@ async def insert_batch(valid_report_queue: Queue):
             await asyncio.sleep(1)
             continue
 
-        if time.time() - last_time < INSERT_INTERVAL_SEC or len(batch) > 10_000:
+        if time.time() - last_time < INSERT_INTERVAL_SEC or len(batch) > BATCH_SIZE:
             await asyncio.sleep(1)
             continue
 
@@ -113,6 +114,8 @@ async def insert_batch(valid_report_queue: Queue):
                 batch = await queue_to_batch(queue=valid_report_queue)
                 logger.debug(f"batch inserting: {len(batch)}")
                 await report_controller.insert(reports=batch)
+                await report_controller.insert_sighting(reports=batch)
+                await session.commit()
                 last_time = time.time()
 
         except OperationalError as e:
