@@ -1,8 +1,7 @@
+from core.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-
-from core.config import settings
 
 # Create an async SQLAlchemy engine
 engine = create_async_engine(
@@ -17,6 +16,8 @@ SessionFactory = sessionmaker(
     bind=engine,
     expire_on_commit=False,
     class_=AsyncSession,  # Use AsyncSession for asynchronous operations
+    autocommit=False,
+    autoflush=False,
 )
 
 
