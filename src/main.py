@@ -112,7 +112,9 @@ async def insert_batch(valid_report_queue: Queue):
             async with session.begin():
                 report_controller = ReportController(session=session)
 
-                batch = await queue_to_batch(queue=valid_report_queue)
+                batch = await queue_to_batch(
+                    queue=valid_report_queue, max_len=BATCH_SIZE
+                )
                 logger.debug(f"batch inserting: {len(batch)}")
                 await report_controller.insert(reports=batch)
                 await report_controller.insert_sighting(reports=batch)
