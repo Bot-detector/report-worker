@@ -93,7 +93,7 @@ async def queue_to_batch(queue: Queue, max_len: int = None) -> list:
 
 async def insert_batch(valid_report_queue: Queue):
     INSERT_INTERVAL_SEC = 60
-    BATCH_SIZE = 10_000
+    BATCH_SIZE = 100
 
     last_time = time.time()
     batch = []
