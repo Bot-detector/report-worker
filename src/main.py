@@ -75,14 +75,20 @@ async def insert_batch(batch_queue: Queue, error_queue: Queue):
         except OperationalError as e:
             logger.error({"error": e})
             await asyncio.gather(
-                *[error_queue.put(convert_stg_to_kafka_report(m)) for m in batch]
+                *[
+                    error_queue.put(convert_stg_to_kafka_report(m).model_dump())
+                    for m in batch
+                ]
             )
             await asyncio.sleep(5)
         except Exception as e:
             logger.error({"error": e})
             logger.debug(f"Traceback: \n{traceback.format_exc()}")
             await asyncio.gather(
-                *[error_queue.put(convert_stg_to_kafka_report(m)) for m in batch]
+                *[
+                    error_queue.put(convert_stg_to_kafka_report(m).model_dump())
+                    for m in batch
+                ]
             )
             await asyncio.sleep(5)
 
