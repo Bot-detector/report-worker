@@ -44,6 +44,8 @@ async def create_batch(batch_size: int, batch_queue: Queue, report_queue: Queue)
             continue
 
         report = await report_queue.get()
+        report_queue.task_done()
+
         batch.append(report)
 
         delta = _time - time.time()
@@ -59,6 +61,7 @@ async def insert_batch(batch_queue: Queue, error_queue: Queue):
             await asyncio.sleep(1)
             continue
         batch = await batch_queue.get()
+        batch_queue.task_done()
         try:
             # Acquire an asynchronous database session
             session: AsyncSession = await get_session()
