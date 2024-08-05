@@ -45,6 +45,10 @@ class ReportInQV2(BaseReport):
     reported_id: int
 
 
+class KafkaReport(ReportInQV2):
+    metadata: Metadata = Metadata(version="v2.0.0")
+
+
 class ReportInQueue(BaseModel):
     reporter: str
     reported: str

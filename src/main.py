@@ -9,6 +9,7 @@ from _kafka import consumer, producer
 from app.controllers.player import PlayerController
 from app.controllers.report import ReportController
 from app.views.report import (
+    KafkaReport,
     ReportInQV1,
     ReportInQV2,
     StgReportCreate,
@@ -52,7 +53,7 @@ async def create_batch(batch_size: int, batch_queue: Queue, report_queue: Queue)
             _time = time.time()
 
 
-async def insert_batch(batch_queue: Queue):
+async def insert_batch(batch_queue: Queue, error_queue: Queue):
     while True:
         if batch_queue.empty():
             await asyncio.sleep(1)
@@ -69,15 +70,13 @@ async def insert_batch(batch_queue: Queue):
                 await session.commit()
                 logger.debug("inserted")
         except OperationalError as e:
-            # await asyncio.gather(*[valid_report_queue.put(msg) for msg in batch])
-            # TODO: convert
             logger.error({"error": e})
+            await asyncio.gather(*[error_queue.put(KafkaReport(**m)) for m in batch])
             await asyncio.sleep(5)
-
         except Exception as e:
-            # await asyncio.gather(*[valid_report_queue.put(msg) for msg in batch])
             logger.error({"error": e})
             logger.debug(f"Traceback: \n{traceback.format_exc()}")
+            await asyncio.gather(*[error_queue.put(KafkaReport(**m)) for m in batch])
             await asyncio.sleep(5)
 
 
