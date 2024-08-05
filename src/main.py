@@ -33,101 +33,49 @@ class ReportedDoesNotExist(PlayerDoesNotExist):
     ...
 
 
-async def check_duplicate_report(
-    report_queue: Queue,
-    valid_report_queue: Queue,
-    skip: bool = False,
-):
+async def create_batch(batch_size: int, batch_queue: Queue, report_queue: Queue):
+    batch = []
+    _time = time.time()
+    MAX_INTERVAL = 60
     while True:
-        # Check if both queues are empty
         if report_queue.empty():
             await asyncio.sleep(1)
             continue
 
-        # read message from queue
-        msg: StgReportCreate = await report_queue.get()
-        report_queue.task_done()
+        report = await report_queue.get()
+        batch.append(report)
 
-        if skip:
-            await valid_report_queue.put(msg)
-            continue
-
-        try:
-            # Acquire an asynchronous database session
-            session: AsyncSession = await get_session()
-            async with session.begin():
-                report_controller = ReportController(session=session)
-                report = await report_controller.get(
-                    reported_id=msg.reportedID,
-                    reporting_id=msg.reportingID,
-                    region_id=msg.region_id,
-                )
-
-            # skip duplicate reports
-            if report:
-                continue
-
-            await valid_report_queue.put(msg)
-        except OperationalError as e:
-            await report_queue.put(msg)
-            logger.error({"error": e})
-            await asyncio.sleep(5)
-            continue
-        except Exception as e:
-            await report_queue.put(msg)
-            logger.error({"error": e})
-            logger.debug(f"Traceback: \n{traceback.format_exc()}")
-            await asyncio.sleep(5)
-            continue
+        delta = _time - time.time()
+        if len(batch) == batch_size or delta > MAX_INTERVAL:
+            await batch_queue.put(batch)
+            batch = []
+            _time = time.time()
 
 
-async def queue_to_batch(queue: Queue, max_len: int = None) -> list:
-    output = []
-    max_len = max_len if max_len else queue.qsize()
-    for _ in range(max_len):
-        msg = await queue.get()
-        queue.task_done()
-        output.append(msg)
-    return output
-
-
-async def insert_batch(valid_report_queue: Queue):
-    INSERT_INTERVAL_SEC = 60
-    BATCH_SIZE = 100
-
-    last_time = time.time()
-    batch = []
+async def insert_batch(batch_queue: Queue):
     while True:
-        if valid_report_queue.empty():
+        if batch_queue.empty():
             await asyncio.sleep(1)
             continue
-
-        if time.time() - last_time < INSERT_INTERVAL_SEC or len(batch) > BATCH_SIZE:
-            await asyncio.sleep(1)
-            continue
-
+        batch = await batch_queue.get()
         try:
             # Acquire an asynchronous database session
             session: AsyncSession = await get_session()
             async with session.begin():
                 report_controller = ReportController(session=session)
-
-                batch = await queue_to_batch(
-                    queue=valid_report_queue, max_len=BATCH_SIZE
-                )
                 logger.debug(f"batch inserting: {len(batch)}")
                 await report_controller.insert(reports=batch)
                 await report_controller.insert_sighting(reports=batch)
                 await session.commit()
-                last_time = time.time()
-
+                logger.debug("inserted")
         except OperationalError as e:
-            await asyncio.gather(*[valid_report_queue.put(msg) for msg in batch])
+            # await asyncio.gather(*[valid_report_queue.put(msg) for msg in batch])
+            # TODO: convert
             logger.error({"error": e})
             await asyncio.sleep(5)
 
         except Exception as e:
-            await asyncio.gather(*[valid_report_queue.put(msg) for msg in batch])
+            # await asyncio.gather(*[valid_report_queue.put(msg) for msg in batch])
             logger.error({"error": e})
             logger.debug(f"Traceback: \n{traceback.format_exc()}")
             await asyncio.sleep(5)
@@ -189,6 +137,9 @@ async def process_msg_v2(msg: ReportInQV2) -> StgReportCreate:
 
 
 async def process_data(report_queue: Queue, player_cache: SimpleALRUCache):
+    """
+    Convert kafka messages to Reports, put Reports into the report_Queue
+    """
     receive_queue = consumer.get_queue()
     error_queue = producer.get_queue()
 
@@ -226,7 +177,10 @@ async def process_data(report_queue: Queue, player_cache: SimpleALRUCache):
 
 
 async def main():
-    report_queue = Queue(maxsize=10_000)
+    report_queue = Queue(maxsize=1_000)
+    batch_queue = Queue(maxsize=10)
+    BATCH_SIZE = 1_000
+
     await producer.start_engine(topic="report")
     await consumer.start_engine(topics=["report"])
 
@@ -234,12 +188,14 @@ async def main():
 
     for _ in range(5):
         asyncio.create_task(
-            process_data(
-                report_queue=report_queue,
-                player_cache=player_cache,
-            )
+            process_data(report_queue=report_queue, player_cache=player_cache)
         )
-    asyncio.create_task(insert_batch(valid_report_queue=report_queue))
+    asyncio.create_task(
+        create_batch(
+            batch_size=BATCH_SIZE, batch_queue=batch_queue, report_queue=report_queue
+        )
+    )
+    asyncio.create_task(insert_batch(batch_queue=batch_queue))
 
     while True:
         await asyncio.sleep(60)
