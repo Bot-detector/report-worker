@@ -194,7 +194,9 @@ async def main():
             batch_size=BATCH_SIZE, batch_queue=batch_queue, report_queue=report_queue
         )
     )
-    asyncio.create_task(insert_batch(batch_queue=batch_queue))
+    asyncio.create_task(
+        insert_batch(batch_queue=batch_queue, error_queue=producer.send_queue)
+    )
 
     while True:
         await asyncio.sleep(60)
