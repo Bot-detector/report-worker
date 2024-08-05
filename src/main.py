@@ -9,11 +9,11 @@ from _kafka import consumer, producer
 from app.controllers.player import PlayerController
 from app.controllers.report import ReportController
 from app.views.report import (
-    KafkaReport,
     ReportInQV1,
     ReportInQV2,
     StgReportCreate,
     convert_report_q_to_db,
+    convert_stg_to_kafka_report,
 )
 from database.database import get_session
 from sqlalchemy.exc import OperationalError
@@ -74,12 +74,16 @@ async def insert_batch(batch_queue: Queue, error_queue: Queue):
                 logger.debug("inserted")
         except OperationalError as e:
             logger.error({"error": e})
-            await asyncio.gather(*[error_queue.put(KafkaReport(**m)) for m in batch])
+            await asyncio.gather(
+                *[error_queue.put(convert_stg_to_kafka_report(m)) for m in batch]
+            )
             await asyncio.sleep(5)
         except Exception as e:
             logger.error({"error": e})
             logger.debug(f"Traceback: \n{traceback.format_exc()}")
-            await asyncio.gather(*[error_queue.put(KafkaReport(**m)) for m in batch])
+            await asyncio.gather(
+                *[error_queue.put(convert_stg_to_kafka_report(m)) for m in batch]
+            )
             await asyncio.sleep(5)
 
 

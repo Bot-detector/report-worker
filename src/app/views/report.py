@@ -149,3 +149,44 @@ def convert_report_q_to_db(
         equip_shield_id=report_in_queue.equipment.equip_shield_id,
         equip_ge_value=report_in_queue.equip_ge_value,
     )
+
+
+def convert_stg_to_kafka_report(stg_report: StgReportCreate) -> KafkaReport:
+    equipment = Equipment(
+        equip_head_id=stg_report.equip_head_id,
+        equip_amulet_id=stg_report.equip_amulet_id,
+        equip_torso_id=stg_report.equip_torso_id,
+        equip_legs_id=stg_report.equip_legs_id,
+        equip_boots_id=stg_report.equip_boots_id,
+        equip_cape_id=stg_report.equip_cape_id,
+        equip_hands_id=stg_report.equip_hands_id,
+        equip_weapon_id=stg_report.equip_weapon_id,
+        equip_shield_id=stg_report.equip_shield_id,
+    )
+
+    return KafkaReport(
+        region_id=stg_report.region_id,
+        x_coord=stg_report.x_coord,
+        y_coord=stg_report.y_coord,
+        z_coord=stg_report.z_coord,
+        ts=int(stg_report.timestamp.timestamp() * 1000),
+        manual_detect=int(stg_report.manual_detect)
+        if stg_report.manual_detect is not None
+        else 0,
+        on_members_world=stg_report.on_members_world
+        if stg_report.on_members_world is not None
+        else 0,
+        on_pvp_world=int(stg_report.on_pvp_world)
+        if stg_report.on_pvp_world is not None
+        else 0,
+        world_number=stg_report.world_number
+        if stg_report.world_number is not None
+        else 0,
+        equipment=equipment,
+        equip_ge_value=stg_report.equip_ge_value
+        if stg_report.equip_ge_value is not None
+        else 0,
+        reporter_id=stg_report.reportingID,
+        reported_id=stg_report.reportedID,
+        metadata=Metadata(version="v2.0.0"),
+    )
