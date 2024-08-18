@@ -4,6 +4,10 @@ import time
 import traceback
 from asyncio import Queue
 
+from pydantic import ValidationError
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from _cache import SimpleALRUCache
 from _kafka import consumer, producer
 from app.controllers.player import PlayerController
@@ -16,8 +20,6 @@ from app.views.report import (
     convert_stg_to_kafka_report,
 )
 from database.database import get_session
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +182,10 @@ async def process_data(report_queue: Queue, player_cache: SimpleALRUCache):
                 report = await process_msg_v2(msg=msg)
         except (ReporterDoesNotExist, ReportedDoesNotExist):
             continue
+        # pydantic error
+        except ValidationError as e:
+            logger.error({"error": e})
+        # database error
         except OperationalError as e:
             await error_queue.put(raw_msg)
             logger.error({"error": e})
