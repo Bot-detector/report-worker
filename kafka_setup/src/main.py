@@ -1,6 +1,7 @@
 import json
 import os
 import random
+from datetime import datetime
 
 import _kafka_config
 from faker import Faker
@@ -46,7 +47,7 @@ def send_data(producer: KafkaProducer):
             "x_coord": random.randint(0, 5000),
             "y_coord": random.randint(0, 5000),
             "z_coord": random.randint(0, 3),
-            "ts": int(faker.date_time().timestamp()),
+            "ts": int(faker.date_time(end_datetime=datetime(2038, 1, 1)).timestamp()),
             "manual_detect": random.choice([0, 1]),
             "on_members_world": random.choice([0, 1]),
             "on_pvp_world": random.choice([0, 1]),

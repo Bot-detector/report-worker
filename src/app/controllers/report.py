@@ -96,5 +96,111 @@ class ReportController(DatabaseHandler):
         await self.session.execute(sqla.text("DROP TABLE IF EXISTS temp_sighting;"))
         # logger.debug("Cleaned up temp table")
 
+    async def insert_gear(self, reports: list[StgReportCreate]) -> None:
+        sets = []
+        keys = (
+            "equip_head_id",
+            "equip_amulet_id",
+            "equip_torso_id",
+            "equip_legs_id",
+            "equip_boots_id",
+            "equip_cape_id",
+            "equip_hands_id",
+            "equip_weapon_id",
+            "equip_shield_id",
+        )
+        for report in reports:
+            _report = report.model_dump()
+            sets.append({k: v for k, v in _report.items() if k in keys})
+
+        sql_create_temp_gear = """
+            CREATE TEMPORARY TABLE temp_gear (
+                `equip_head_id` SMALLINT,
+                `equip_amulet_id` SMALLINT,
+                `equip_torso_id` SMALLINT,
+                `equip_legs_id` SMALLINT,
+                `equip_boots_id` SMALLINT,
+                `equip_cape_id` SMALLINT,
+                `equip_hands_id` SMALLINT,
+                `equip_weapon_id` SMALLINT,
+                `equip_shield_id` SMALLINT
+            ) ENGINE=MEMORY;
+        """
+        sql_temp_gear = """
+            INSERT INTO temp_gear (
+                equip_head_id,
+                equip_amulet_id,
+                equip_torso_id,
+                equip_legs_id,
+                equip_boots_id,
+                equip_cape_id,
+                equip_hands_id,
+                equip_weapon_id,
+                equip_shield_id
+            )
+            VALUES (
+                :equip_head_id,
+                :equip_amulet_id,
+                :equip_torso_id,
+                :equip_legs_id,
+                :equip_boots_id,
+                :equip_cape_id,
+                :equip_hands_id,
+                :equip_weapon_id,
+                :equip_shield_id
+            )
+        """
+        sql_insert_gear = """
+            INSERT INTO report_gear (
+                equip_head_id,
+                equip_amulet_id,
+                equip_torso_id,
+                equip_legs_id,
+                equip_boots_id,
+                equip_cape_id,
+                equip_hands_id,
+                equip_weapon_id,
+                equip_shield_id
+            )
+            SELECT DISTINCT
+                tg.equip_head_id,
+                tg.equip_amulet_id,
+                tg.equip_torso_id,
+                tg.equip_legs_id,
+                tg.equip_boots_id,
+                tg.equip_cape_id,
+                tg.equip_hands_id,
+                tg.equip_weapon_id,
+                tg.equip_shield_id
+            FROM temp_gear tg
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM report_gear rg
+                WHERE tg.equip_head_id = rg.equip_head_id
+                AND tg.equip_amulet_id = rg.equip_amulet_id
+                AND tg.equip_torso_id = rg.equip_torso_id
+                AND tg.equip_legs_id = rg.equip_legs_id
+                AND tg.equip_boots_id = rg.equip_boots_id
+                AND tg.equip_cape_id = rg.equip_cape_id
+                AND tg.equip_hands_id = rg.equip_hands_id
+                AND tg.equip_weapon_id = rg.equip_weapon_id
+                AND tg.equip_shield_id = rg.equip_shield_id
+            );
+        """
+        await self.session.execute(sqla.text("DROP TABLE IF EXISTS temp_gear;"))
+        # logger.debug("Dropped previous temp table")
+
+        await self.session.execute(sqla.text(sql_create_temp_gear))
+        # logger.debug("Created temp table")
+
+        await self.session.execute(sqla.text(sql_temp_gear), sets)
+        # logger.debug("Inserted into temp table")
+
+        await self.session.execute(sqla.text(sql_insert_gear))
+        # logger.debug("Inserted into main table")
+
+        await self.session.execute(sqla.text("DROP TABLE IF EXISTS temp_gear;"))
+        # logger.debug("Cleaned up temp table")
+
     async def get_or_insert(self):
         raise NotImplementedError()

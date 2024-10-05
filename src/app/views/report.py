@@ -126,6 +126,7 @@ def convert_report_q_to_db(
 ) -> StgReportCreate:
     gmt = time.gmtime(report_in_queue.ts)
     human_time = time.strftime("%Y-%m-%d %H:%M:%S", gmt)
+    human_time = datetime.fromtimestamp(report_in_queue.ts)
     return StgReportCreate(
         reportedID=reported_id,
         reportingID=reporting_id,
