@@ -202,5 +202,56 @@ class ReportController(DatabaseHandler):
         await self.session.execute(sqla.text("DROP TABLE IF EXISTS temp_gear;"))
         # logger.debug("Cleaned up temp table")
 
+    async def insert_location(self, reports: list[StgReportCreate]) -> None:
+        locations = []
+        keys = [
+            "region_id",
+            "x_coord",
+            "y_coord",
+            "z_coord",
+        ]
+        for report in reports:
+            data = report.model_dump()
+            locations.append({k: v for k, v in data.items() if k in keys})
+
+        sql_create_temp_location = """
+            CREATE TEMPORARY TABLE temp_location (
+                `region_id` MEDIUMINT UNSIGNED NOT NULL,
+                `x_coord` MEDIUMINT UNSIGNED NOT NULL,
+                `y_coord` MEDIUMINT UNSIGNED NOT NULL,
+                `z_coord` MEDIUMINT UNSIGNED NOT NULL
+            ) ENGINE=MEMORY;
+        """
+        sql_temp_location = """
+            INSERT INTO temp_location (region_id, x_coord, y_coord, z_coord)
+            VALUES (:region_id, :x_coord, :y_coord, :z_coord)
+        """
+        sql_insert_location = """
+            INSERT INTO report_location (region_id, x_coord, y_coord, z_coord)
+            SELECT DISTINCT region_id, x_coord, y_coord, z_coord FROM temp_location tl
+            WHERE NOT EXISTS (
+                SELECT 1 FROM report_location rl
+                WHERE 1
+                    AND tl.region_id = rl.region_id
+                    AND tl.x_coord = rl.x_coord
+                    AND tl.y_coord = rl.y_coord
+                    AND tl.z_coord = rl.z_coord
+            );
+        """
+        await self.session.execute(sqla.text("DROP TABLE IF EXISTS temp_location;"))
+        # logger.debug("Dropped previous temp table")
+
+        await self.session.execute(sqla.text(sql_create_temp_location))
+        # logger.debug("Created temp table")
+
+        await self.session.execute(sqla.text(sql_temp_location), locations)
+        # logger.debug("Inserted into temp table")
+
+        await self.session.execute(sqla.text(sql_insert_location))
+        # logger.debug("Inserted into main table")
+
+        await self.session.execute(sqla.text("DROP TABLE IF EXISTS temp_location;"))
+        # logger.debug("Cleaned up temp table")
+
     async def get_or_insert(self):
         raise NotImplementedError()
