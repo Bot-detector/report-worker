@@ -1,3 +1,4 @@
+import itertools
 import logging
 
 import sqlalchemy as sqla
@@ -251,6 +252,179 @@ class ReportController(DatabaseHandler):
         # logger.debug("Inserted into main table")
 
         await self.session.execute(sqla.text("DROP TABLE IF EXISTS temp_location;"))
+        # logger.debug("Cleaned up temp table")
+
+    async def insert_report(self, reports: list[StgReportCreate]) -> None:
+        _reports = []
+        sighting_keys = (
+            "reportingID",
+            "reportedID",
+            "manual_detect",
+        )
+        gear_keys = (
+            "equip_head_id",
+            "equip_amulet_id",
+            "equip_torso_id",
+            "equip_legs_id",
+            "equip_boots_id",
+            "equip_cape_id",
+            "equip_hands_id",
+            "equip_weapon_id",
+            "equip_shield_id",
+        )
+        location_keys = (
+            "region_id",
+            "x_coord",
+            "y_coord",
+            "z_coord",
+        )
+        report_keys = (
+            "timestamp",
+            "on_members_world",
+            "on_pvp_world",
+            "world_number",
+        )
+        keys = [*sighting_keys, *gear_keys, *location_keys, *report_keys]
+
+        for report in reports:
+            data = report.model_dump()
+            _reports.append({k: v for k, v in data.items() if k in keys})
+
+        # temp table with all unique fields
+        sql_create_temp_report = """
+            CREATE TEMPORARY TABLE temp_report (
+                /*sighting*/
+                reporting_id INT,
+                reported_id INT,
+                manual_detect TINYINT DEFAULT 0,
+                /*gear*/
+                `equip_head_id` SMALLINT,
+                `equip_amulet_id` SMALLINT,
+                `equip_torso_id` SMALLINT,
+                `equip_legs_id` SMALLINT,
+                `equip_boots_id` SMALLINT,
+                `equip_cape_id` SMALLINT,
+                `equip_hands_id` SMALLINT,
+                `equip_weapon_id` SMALLINT,
+                `equip_shield_id` SMALLINT,
+                /*location*/
+                `region_id` MEDIUMINT UNSIGNED NOT NULL,
+                `x_coord` MEDIUMINT UNSIGNED NOT NULL,
+                `y_coord` MEDIUMINT UNSIGNED NOT NULL,
+                `z_coord` MEDIUMINT UNSIGNED NOT NULL,
+                /*report*/
+                `reported_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `on_members_world` TINYINT(1) DEFAULT NULL,
+                `on_pvp_world` TINYINT(1) DEFAULT NULL,
+                `world_number` SMALLINT UNSIGNED DEFAULT NULL
+            ) ENGINE=MEMORY;
+        """
+
+        sql_temp_report = """
+            INSERT INTO temp_report (
+                /*sighting*/
+                reporting_id,
+                reported_id,
+                manual_detect,
+                /*gear*/
+                equip_head_id,
+                equip_amulet_id,
+                equip_torso_id,
+                equip_legs_id,
+                equip_boots_id,
+                equip_cape_id,
+                equip_hands_id,
+                equip_weapon_id,
+                equip_shield_id,
+                /*location*/
+                region_id,
+                x_coord,
+                y_coord,
+                z_coord,
+                /*report*/
+                reported_at,
+                on_members_world,
+                on_pvp_world,
+                world_number
+            )
+            VALUES (
+                :reportingID,
+                :reportedID,
+                :manual_detect,
+                :equip_head_id,
+                :equip_amulet_id,
+                :equip_torso_id,
+                :equip_legs_id,
+                :equip_boots_id,
+                :equip_cape_id,
+                :equip_hands_id,
+                :equip_weapon_id,
+                :equip_shield_id,
+                :region_id,
+                :x_coord,
+                :y_coord,
+                :z_coord,
+                :timestamp,
+                :on_members_world,
+                :on_pvp_world,
+                :world_number
+            );
+
+        """
+        sql_insert_report = """
+            INSERT INTO report (
+                report_sighting_id,
+                report_location_id,
+                report_gear_id,
+                reported_at,
+                on_members_world,
+                on_pvp_world,
+                world_number,
+                region_id
+            )
+            SELECT
+                rs.report_sighting_id,
+                rl.report_location_id,
+                rg.report_gear_id,
+                tr.reported_at,
+                tr.on_members_world,
+                tr.on_pvp_world,
+                tr.world_number,
+                tr.region_id
+            FROM temp_report tr
+            JOIN report_sighting rs
+                ON rs.reporting_id = tr.reporting_id
+                AND rs.reported_id = tr.reported_id
+            JOIN report_location rl
+                ON rl.region_id = tr.region_id
+                AND rl.x_coord = tr.x_coord
+                AND rl.y_coord = tr.y_coord
+                AND rl.z_coord = tr.z_coord
+            JOIN report_gear rg
+                ON rg.equip_head_id = tr.equip_head_id
+                AND rg.equip_amulet_id = tr.equip_amulet_id
+                AND rg.equip_torso_id = tr.equip_torso_id
+                AND rg.equip_legs_id = tr.equip_legs_id
+                AND rg.equip_boots_id = tr.equip_boots_id
+                AND rg.equip_cape_id = tr.equip_cape_id
+                AND rg.equip_hands_id = tr.equip_hands_id
+                AND rg.equip_weapon_id = tr.equip_weapon_id
+                AND rg.equip_shield_id = tr.equip_shield_id
+            ;
+        """
+        await self.session.execute(sqla.text("DROP TABLE IF EXISTS temp_report;"))
+        # logger.debug("Dropped previous temp table")
+
+        await self.session.execute(sqla.text(sql_create_temp_report))
+        # logger.debug("Created temp table")
+
+        await self.session.execute(sqla.text(sql_temp_report), _reports)
+        # logger.debug("Inserted into temp table")
+
+        await self.session.execute(sqla.text(sql_insert_report))
+        # logger.debug("Inserted into main table")
+
+        await self.session.execute(sqla.text("DROP TABLE IF EXISTS temp_report;"))
         # logger.debug("Cleaned up temp table")
 
     async def get_or_insert(self):

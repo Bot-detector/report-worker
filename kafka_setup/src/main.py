@@ -44,12 +44,18 @@ def send_data(producer: KafkaProducer):
     faker = Faker()
     for i in range(len_messages):
         version = random.choice(["v1.0.0", "v2.0.0"])
+        upper_limit_date = datetime(2038, 1, 1)
+        random_past_timestamp = faker.date_time_between(
+            start_date="-30y",
+            end_date=upper_limit_date,
+        )
+
         msg = {
             "region_id": random.randint(10_000, 10_500),
             "x_coord": random.randint(0, 5000),
             "y_coord": random.randint(0, 5000),
             "z_coord": random.randint(0, 3),
-            "ts": int(faker.date_time(end_datetime=date(2038, 1, 1)).timestamp()),
+            "ts": int(random_past_timestamp.timestamp()),
             "manual_detect": random.choice([0, 1]),
             "on_members_world": random.choice([0, 1]),
             "on_pvp_world": random.choice([0, 1]),

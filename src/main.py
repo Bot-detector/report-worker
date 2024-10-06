@@ -74,6 +74,7 @@ async def insert_batch(batch_queue: Queue, error_queue: Queue):
                 await report_controller.insert_sighting(reports=batch)
                 await report_controller.insert_location(reports=batch)
                 await report_controller.insert_gear(reports=batch)
+                await report_controller.insert_report(reports=batch)
                 await session.commit()
                 logger.debug("inserted")
         except OperationalError as e:

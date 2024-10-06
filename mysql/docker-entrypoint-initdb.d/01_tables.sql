@@ -131,9 +131,10 @@ CREATE TABLE `report` (
     `report_location_id` INT UNSIGNED NOT NULL,
     `report_gear_id` INT UNSIGNED NOT NULL,
     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `reported_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `reported_at` timestamp NOT NULL,
     `on_members_world` TINYINT(1) DEFAULT NULL,
     `on_pvp_world` TINYINT(1) DEFAULT NULL,
     `world_number` SMALLINT UNSIGNED DEFAULT NULL,
-    PRIMARY key (`report_sighting_id`, `report_location_id`)
+    `region_id` MEDIUMINT UNSIGNED NOT NULL,
+    PRIMARY key (`report_sighting_id`, `report_location_id`, `region_id`)
 );
