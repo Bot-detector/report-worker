@@ -87,7 +87,7 @@ services:
     command: python src/main.py
     environment:
       - KAFKA_HOST=kafka:9092
-      - DATABASE_URL=mysql+aiomysql://root:root_bot_buster@mysql:3306/playerdata
+      - DATABASE_URL=mysql+aiomysql://report-worker:report_worker_pw@mysql:3306/playerdata
       - POOL_TIMEOUT=30
       - POOL_RECYCLE=30
     networks:

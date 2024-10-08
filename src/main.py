@@ -3,10 +3,7 @@ import logging
 import time
 import traceback
 from asyncio import Queue
-
-from pydantic import ValidationError
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
 
 from _cache import SimpleALRUCache
 from _kafka import consumer, producer
@@ -20,6 +17,9 @@ from app.views.report import (
     convert_stg_to_kafka_report,
 )
 from database.database import get_session
+from pydantic import ValidationError
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +70,10 @@ async def insert_batch(batch_queue: Queue, error_queue: Queue):
             async with session.begin():
                 report_controller = ReportController(session=session)
                 logger.debug(f"batch inserting: {len(batch)}")
+                # stage report
                 await report_controller.insert(reports=batch)
-                await report_controller.insert_sighting(reports=batch)
+                # normalized report
+                await report_controller.insert_report(reports=batch)
                 await session.commit()
                 logger.debug("inserted")
         except OperationalError as e:
@@ -124,6 +126,7 @@ async def process_msg_v1(
 async def process_msg_v2(msg: ReportInQV2) -> StgReportCreate:
     gmt = time.gmtime(msg.ts)
     human_time = time.strftime("%Y-%m-%d %H:%M:%S", gmt)
+    human_time = datetime.fromtimestamp(msg.ts)
     report = StgReportCreate(
         reportedID=msg.reported_id,
         reportingID=msg.reporter_id,
@@ -206,15 +209,23 @@ async def main():
 
     for _ in range(5):
         asyncio.create_task(
-            process_data(report_queue=report_queue, player_cache=player_cache)
+            process_data(
+                report_queue=report_queue,
+                player_cache=player_cache,
+            )
         )
     asyncio.create_task(
         create_batch(
-            batch_size=BATCH_SIZE, batch_queue=batch_queue, report_queue=report_queue
+            batch_size=BATCH_SIZE,
+            batch_queue=batch_queue,
+            report_queue=report_queue,
         )
     )
     asyncio.create_task(
-        insert_batch(batch_queue=batch_queue, error_queue=producer.send_queue)
+        insert_batch(
+            batch_queue=batch_queue,
+            error_queue=producer.send_queue,
+        )
     )
 
     while True:
