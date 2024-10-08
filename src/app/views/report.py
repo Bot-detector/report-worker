@@ -1,8 +1,11 @@
+import logging
 import time
 from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class Metadata(BaseModel):
@@ -124,6 +127,9 @@ class StgReport(StgReportInDB):
 def convert_report_q_to_db(
     reported_id: int, reporting_id: int, report_in_queue: ReportInQueue
 ) -> StgReportCreate:
+    if report_in_queue.ts > 1735736400:
+        logger.warning(f"{report_in_queue.ts=} > 2025-01-01, {report_in_queue=}")
+        return None
     gmt = time.gmtime(report_in_queue.ts)
     human_time = time.strftime("%Y-%m-%d %H:%M:%S", gmt)
     human_time = datetime.fromtimestamp(report_in_queue.ts)

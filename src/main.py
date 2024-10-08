@@ -126,6 +126,7 @@ async def process_msg_v1(
 async def process_msg_v2(msg: ReportInQV2) -> StgReportCreate:
     if msg.ts > 1735736400:
         logger.warning(f"{msg.ts=} > 2025-01-01, {msg=}")
+        return None
 
     gmt = time.gmtime(msg.ts)
     human_time = time.strftime("%Y-%m-%d %H:%M:%S", gmt)
@@ -196,7 +197,8 @@ async def process_data(report_queue: Queue, player_cache: SimpleALRUCache):
             await error_queue.put(raw_msg)
             logger.error({"error": e})
             await asyncio.sleep(5)
-
+        if report is None:
+            continue
         await report_queue.put(report)
 
 
