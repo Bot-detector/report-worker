@@ -70,10 +70,9 @@ async def insert_batch(batch_queue: Queue, error_queue: Queue):
             async with session.begin():
                 report_controller = ReportController(session=session)
                 logger.debug(f"batch inserting: {len(batch)}")
+                # stage report
                 await report_controller.insert(reports=batch)
-                await report_controller.insert_sighting(reports=batch)
-                await report_controller.insert_location(reports=batch)
-                await report_controller.insert_gear(reports=batch)
+                # normalized report
                 await report_controller.insert_report(reports=batch)
                 await session.commit()
                 logger.debug("inserted")
@@ -210,15 +209,23 @@ async def main():
 
     for _ in range(5):
         asyncio.create_task(
-            process_data(report_queue=report_queue, player_cache=player_cache)
+            process_data(
+                report_queue=report_queue,
+                player_cache=player_cache,
+            )
         )
     asyncio.create_task(
         create_batch(
-            batch_size=BATCH_SIZE, batch_queue=batch_queue, report_queue=report_queue
+            batch_size=BATCH_SIZE,
+            batch_queue=batch_queue,
+            report_queue=report_queue,
         )
     )
     asyncio.create_task(
-        insert_batch(batch_queue=batch_queue, error_queue=producer.send_queue)
+        insert_batch(
+            batch_queue=batch_queue,
+            error_queue=producer.send_queue,
+        )
     )
 
     while True:

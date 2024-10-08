@@ -1,7 +1,7 @@
 import json
 import os
 import random
-from datetime import date, datetime
+from datetime import datetime
 
 import _kafka_config
 from faker import Faker
