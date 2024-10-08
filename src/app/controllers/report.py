@@ -253,7 +253,7 @@ class ReportController(DatabaseHandler):
                     world_number,
                     region_id
                 )
-                SELECT
+                SELECT DISTINCT
                     rs.report_sighting_id,
                     rl.report_location_id,
                     rg.report_gear_id,
