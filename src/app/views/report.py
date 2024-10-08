@@ -127,9 +127,18 @@ class StgReport(StgReportInDB):
 def convert_report_q_to_db(
     reported_id: int, reporting_id: int, report_in_queue: ReportInQueue
 ) -> StgReportCreate:
+    # If the timestamp is too large, assume it's in milliseconds and convert to seconds
+    if report_in_queue.ts > 10**10:
+        report_in_queue.ts = report_in_queue.ts / 1000
+
     if report_in_queue.ts > 1735736400:
         logger.warning(f"{report_in_queue.ts=} > 2025-01-01, {report_in_queue=}")
         return None
+
+    if report_in_queue.ts < 1577883600:
+        logger.warning(f"{report_in_queue.ts=} < 2020-01-01, {report_in_queue=}")
+        return None
+
     gmt = time.gmtime(report_in_queue.ts)
     human_time = time.strftime("%Y-%m-%d %H:%M:%S", gmt)
     human_time = datetime.fromtimestamp(report_in_queue.ts)
