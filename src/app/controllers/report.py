@@ -281,6 +281,13 @@ class ReportController(DatabaseHandler):
                     AND rg.equip_hands_id = tr.equip_hands_id
                     AND rg.equip_weapon_id = tr.equip_weapon_id
                     AND rg.equip_shield_id = tr.equip_shield_id
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM report rp
+                    WHERE 1
+                        AND rs.report_sighting_id = rp.report_sighting_id
+                        AND rl.report_location_id = rp.report_location_id
+                        AND tr.region_id = rp.region_id
+                )
                 ;
             """
         )
