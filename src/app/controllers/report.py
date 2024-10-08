@@ -106,8 +106,8 @@ class ReportController(DatabaseHandler):
                 `z_coord` MEDIUMINT UNSIGNED NOT NULL,
                 /*report*/
                 `reported_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                `on_members_world` TINYINT(1) DEFAULT NULL,
-                `on_pvp_world` TINYINT(1) DEFAULT NULL,
+                `on_members_world` TINYINT DEFAULT NULL,
+                `on_pvp_world` TINYINT DEFAULT NULL,
                 `world_number` SMALLINT UNSIGNED DEFAULT NULL
             ) ENGINE=MEMORY;
         """
