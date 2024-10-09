@@ -71,7 +71,7 @@ async def insert_batch(batch_queue: Queue, error_queue: Queue):
                 report_controller = ReportController(session=session)
                 logger.debug(f"batch inserting: {len(batch)}")
                 # stage report
-                await report_controller.insert(reports=batch)
+                # await report_controller.insert(reports=batch)
                 # normalized report
                 await report_controller.insert_report(reports=batch)
                 await session.commit()
