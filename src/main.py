@@ -139,6 +139,18 @@ async def process_msg_v2(msg: ReportInQV2) -> StgReportCreate:
     gmt = time.gmtime(msg.ts)
     human_time = time.strftime("%Y-%m-%d %H:%M:%S", gmt)
     human_time = datetime.fromtimestamp(msg.ts)
+
+    equipment = msg.equipment.model_dump()
+    item_bug = 0
+
+    for k, v in equipment.items():
+        if v > 32767:
+            setattr(msg.equipment, k, 0)
+            item_bug = 1
+
+    if item_bug:
+        logger.warning(equipment)
+
     report = StgReportCreate(
         reportedID=msg.reported_id,
         reportingID=msg.reporter_id,
