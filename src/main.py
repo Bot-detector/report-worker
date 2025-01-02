@@ -128,13 +128,13 @@ async def process_msg_v2(msg: ReportInQV2) -> StgReportCreate:
     if msg.ts > 10**10:
         msg.ts = msg.ts / 1000
 
-    if msg.ts > 1735736400:
-        logger.warning(f"{msg.ts=} > 2025-01-01, {msg=}")
-        return None
+    # if msg.ts > 1735736400:
+    #     logger.warning(f"{msg.ts=} > 2025-01-01, {msg=}")
+    #     return None
 
-    if msg.ts < 1577883600:
-        logger.warning(f"{msg.ts=} < 2020-01-01, {msg=}")
-        return None
+    # if msg.ts < 1577883600:
+    #     logger.warning(f"{msg.ts=} < 2020-01-01, {msg=}")
+    #     return None
 
     gmt = time.gmtime(msg.ts)
     human_time = time.strftime("%Y-%m-%d %H:%M:%S", gmt)
