@@ -51,6 +51,15 @@ class PlayerController(DatabaseHandler):
 
         return player
 
+    async def _insert_migration(self, player: PlayerInDB) -> None:
+        sql = sqla.text(
+            """
+            INSERT INTO report_migrated (reporting_id, migrated)
+            VALUES (:reporting_id, 1);
+            """
+        )
+        await self.session.execute(sql, {"reporting_id": player.id})
+
     async def insert(self, player: PlayerCreate) -> PlayerInDB:
         player.name = self.sanitize_name(player.name)
         sql = sqla.insert(DBPlayer).values(player.model_dump()).prefix_with("IGNORE")
@@ -67,5 +76,5 @@ class PlayerController(DatabaseHandler):
 
         if player is None:
             player = await self.insert(PlayerCreate(name=player_name))
-
+            await self._insert_migration(player=player)
         return player
