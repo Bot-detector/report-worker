@@ -54,7 +54,7 @@ class PlayerController(DatabaseHandler):
     async def _insert_migration(self, player: PlayerInDB) -> None:
         sql = sqla.text(
             """
-            INSERT INTO report_migrated (reporting_id, migrated)
+            INSERT IGNORE INTO report_migrated (reporting_id, migrated)
             VALUES (:reporting_id, 1);
             """
         )
