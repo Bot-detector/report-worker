@@ -76,5 +76,5 @@ class PlayerController(DatabaseHandler):
 
         if player is None:
             player = await self.insert(PlayerCreate(name=player_name))
-            await self._insert_migration(player=player)
+            # await self._insert_migration(player=player)
         return player
